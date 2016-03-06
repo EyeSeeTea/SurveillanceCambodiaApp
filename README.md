@@ -16,4 +16,4 @@ This app is compatible with SDK API version 15+.
 
 ## License 
 
-This app is licensed under GPLv3. Please respect the terms of that license.
+This app is licensed under GPLv3. Please respect the terms of that license. 
