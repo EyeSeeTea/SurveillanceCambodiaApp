@@ -31,6 +31,8 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.text.InputFilter;
@@ -57,17 +59,22 @@ import android.widget.TextView;
 import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.google.i18n.phonenumbers.Phonenumber;
+import com.raizlabs.android.dbflow.sql.language.Select;
 
 import org.eyeseetea.malariacare.DashboardActivity;
 import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.SurveyActivity;
 import org.eyeseetea.malariacare.database.model.Option;
 import org.eyeseetea.malariacare.database.model.Question;
+import org.eyeseetea.malariacare.database.model.Survey;
 import org.eyeseetea.malariacare.database.model.Tab;
+import org.eyeseetea.malariacare.database.model.TabGroup;
 import org.eyeseetea.malariacare.database.model.Value;
+import org.eyeseetea.malariacare.database.utils.LocationMemory;
 import org.eyeseetea.malariacare.database.utils.ReadWriteDB;
 import org.eyeseetea.malariacare.database.utils.Session;
 import org.eyeseetea.malariacare.layout.adapters.survey.progress.ProgressTabStatus;
+import org.eyeseetea.malariacare.layout.listeners.SurveyLocationListener;
 import org.eyeseetea.malariacare.utils.Constants;
 import org.eyeseetea.malariacare.utils.Utils;
 import org.eyeseetea.malariacare.views.TextCard;
@@ -90,6 +97,8 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
      * Formatted telephone mask: 0NN NNN NNN{N}
      */
     public static final String FORMATTED_PHONENUMBER_MASK = "0\\d{2} \\d{3} \\d{3,4}";
+
+    private static final String DEFAULT_PHONE_VALUE = "0XX XXX XXXX";
 
     /**
      * Formatted telephone mask: 0NN NNN NNN{N}
@@ -121,6 +130,7 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
 
     int id_layout;
 
+
     /**
      * Flag that indicates if the current survey in session is already sent or not (it affects readonly settings)
      */
@@ -134,7 +144,7 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
         this.items=initItems(tab);
         List<Question> questions= initHeaderAndQuestions();
         this.progressTabStatus=initProgress(questions);
-        this.readOnly = !Session.getSurvey().isInProgress();
+        this.readOnly = Session.getSurvey() != null && !Session.getSurvey().isInProgress();
         this.isSwipeAdded=false;
     }
 
@@ -181,6 +191,7 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
              */
             public void onClick(View view) {
                 Log.d(TAG, "onClick");
+
                 Option selectedOption=(Option)view.getTag();
                 Question question=progressTabStatus.getCurrentQuestion();
                 ReadWriteDB.saveValuesDDL(question, selectedOption);
@@ -191,6 +202,9 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
                     for (int itemPos = 0; itemPos < vgRow.getChildCount(); itemPos++) {
                         View childItem = vgRow.getChildAt(itemPos);
                         if (childItem instanceof ImageView) {
+                            //We dont want the user to click anything else
+                            swipeTouchListener.clearClickableViews();
+
                             Option otherOption=(Option)childItem.getTag();
                             if(selectedOption.getId_option() != otherOption.getId_option()){
                                 overshadow((ImageView) childItem, otherOption);
@@ -393,7 +407,7 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
      * @param value
      */
     private void initPositiveIntValue(TableRow tableRow, Value value){
-        ImageButton button=(ImageButton)tableRow.findViewById(R.id.dynamic_positiveInt_btn);
+        Button button=(Button)tableRow.findViewById(R.id.dynamic_positiveInt_btn);
 
         final EditText numberPicker = (EditText)tableRow.findViewById(R.id.dynamic_positiveInt_edit);
 
@@ -447,17 +461,15 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
      * @param value
      */
     private void initPhoneValue(TableRow tableRow, Value value){
-        ImageButton button=(ImageButton)tableRow.findViewById(R.id.dynamic_phone_btn);
+        Button button=(Button)tableRow.findViewById(R.id.dynamic_phone_btn);
         final EditText editText=(EditText)tableRow.findViewById(R.id.dynamic_phone_edit);
         final Context ctx = tableRow.getContext();
 
-        //Has value? show it
-        if(value!=null){
-            editText.setText(value.getValue());
-        }
-
         //Editable? add listener
         if(!readOnly){
+
+            // show a kind of mask for helping purpose
+            editText.setText(DEFAULT_PHONE_VALUE);
 
             //Try to format on done
             editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -482,6 +494,9 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
                     String phoneValue = editText.getText().toString();
 
                     //Check phone ok
+                    if (phoneValue != null && phoneValue.equals(DEFAULT_PHONE_VALUE)) {
+                        phoneValue = "";
+                    }
                     if(!checkPhoneNumberByMask(phoneValue)){
                         editText.setError(context.getString(R.string.dynamic_error_phone_format));
                         return;
@@ -496,6 +511,10 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
                 }
             });
         }else{
+            //Has value? show it
+            if(value!=null){
+                editText.setText(value.getValue());
+            }
             editText.setEnabled(false);
             button.setEnabled(false);
         }
@@ -576,7 +595,7 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
         if (phoneValue == null) {
             phoneValue = "";
         }
-        return phoneValue.isEmpty() || phoneValue.matches(FORMATTED_PHONENUMBER_MASK) || phoneValue.matches(PLAIN_PHONENUMBER_MASK);
+        return phoneValue.isEmpty() || phoneValue.replace(" ", "").matches(FORMATTED_PHONENUMBER_MASK) || phoneValue.replace(" ", "").matches(PLAIN_PHONENUMBER_MASK);
     }
 
     /**
@@ -682,7 +701,7 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
                 }
                 next();
             }
-        }, 1000);
+        }, 750);
     }
 
     /**
@@ -728,7 +747,9 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
      * Changes the current question moving forward
      */
     private void next(){
-        if(!progressTabStatus.hasNextQuestion()){
+        Question question = progressTabStatus.getCurrentQuestion();
+        Value value = question.getValueBySession();
+        if (isDone(value)) {
             return;
         }
 
