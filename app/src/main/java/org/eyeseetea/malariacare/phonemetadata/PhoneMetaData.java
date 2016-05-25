@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2015.
  *
- * This file is part of QIS Survelliance App.
+ * This file is part of QIS Surveillance App.
  *
- *  QIS Survelliance App is free software: you can redistribute it and/or modify
+ *  QIS Surveillance App is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  QIS Survelliance App is distributed in the hope that it will be useful,
+ *  QIS Surveillance App is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with QIS Survelliance App.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with QIS Surveillance App.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
@@ -27,15 +27,10 @@ public class PhoneMetaData {
     private String imei;
     private String phone_number;
     private String phone_serial;
+    private String build_number;
 
     public PhoneMetaData() {
 
-    }
-
-    public PhoneMetaData(String phone_serial, String imei, String phone_number) {
-        this.phone_serial = phone_serial;
-        this.imei = imei;
-        this.phone_number = phone_number;
     }
 
     public String getImei() {
@@ -62,6 +57,14 @@ public class PhoneMetaData {
         this.phone_serial = phone_serial;
     }
 
+    public String getBuild_number() {
+        return build_number;
+    }
+
+    public void setBuild_number(String build_number) {
+        this.build_number = build_number;
+    }
+
     public String getPhone_metaData() {
         String phonemetadata="";
         phonemetadata= "###";
@@ -78,6 +81,12 @@ public class PhoneMetaData {
         if(phone_serial != null && !phone_serial.equals("") && phone_serial.length()>0){
             phonemetadata=phonemetadata+phone_serial;
         }
+
+        phonemetadata= phonemetadata+"###";
+        if(build_number != null && !build_number.equals("") && build_number.length()>0){
+            phonemetadata=phonemetadata+build_number;
+        }
+
         return phonemetadata;
     }
 }

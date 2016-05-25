@@ -1,27 +1,32 @@
 /*
  * Copyright (c) 2015.
  *
- * This file is part of QIS Survelliance App.
+ * This file is part of QIS Surveillance App.
  *
- *  QIS Survelliance App is free software: you can redistribute it and/or modify
+ *  QIS Surveillance App is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  QIS Survelliance App is distributed in the hope that it will be useful,
+ *  QIS Surveillance App is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with QIS Survelliance App.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with QIS Surveillance App.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.eyeseetea.malariacare.database.utils;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.location.Location;
+import android.preference.PreferenceManager;
 import android.util.Log;
+import android.widget.ListView;
 
+import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.database.model.Survey;
 import org.eyeseetea.malariacare.database.model.User;
 import org.eyeseetea.malariacare.layout.adapters.dashboard.IDashboardAdapter;
@@ -30,6 +35,8 @@ import org.eyeseetea.malariacare.phonemetadata.PhoneMetaData;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * An application scoped object that stores transversal information:
@@ -59,6 +66,12 @@ public class Session {
      * The current phone metadata
      */
     private static PhoneMetaData phoneMetaData;
+
+    /**
+     * Lock to protect the inclusion or extraction of any value in a concurrent way
+     */
+    final public static ReentrantReadWriteLock valuesLock = new ReentrantReadWriteLock();
+
     /**
      * Map that holds non serializable results from services
      */
@@ -71,7 +84,7 @@ public class Session {
         return survey;
     }
 
-    public static void setSurvey(Survey survey) {
+    public static synchronized void setSurvey(Survey survey) {
         Session.survey = survey;
     }
 
@@ -79,7 +92,7 @@ public class Session {
         return user;
     }
 
-    public static void setUser(User user) {
+    public static synchronized void setUser(User user) {
         Session.user = user;
     }
 
@@ -87,7 +100,7 @@ public class Session {
         return adapterUncompleted;
     }
 
-    public static void setAdapterUncompleted(IDashboardAdapter adapterUncompleted) {
+    public static synchronized void setAdapterUncompleted(IDashboardAdapter adapterUncompleted) {
         Session.adapterUncompleted = adapterUncompleted;
     }
 
@@ -95,8 +108,27 @@ public class Session {
         return adapterCompleted;
     }
 
-    public static void setAdapterCompleted(IDashboardAdapter adapterCompleted) {
+    public static synchronized void setAdapterCompleted(IDashboardAdapter adapterCompleted) {
         Session.adapterCompleted = adapterCompleted;
+    }
+
+    public static synchronized void setFullOfUnsent(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(context.getResources().getString(R.string.fullOfUnsent), true);
+        editor.commit();
+    }
+
+    public static synchronized void setNotFullOfUnsent(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(context.getResources().getString(R.string.fullOfUnsent), false);
+        editor.commit();
+    }
+
+    public static boolean isNotFullOfUnsent(Context context){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return !sharedPreferences.getBoolean(context.getResources().getString(R.string.fullOfUnsent),false);
     }
 
     /**
@@ -121,8 +153,13 @@ public class Session {
      * @param value
      */
     public static void putServiceValue(String key, Object value){
-        Log.i(TAG, "putServiceValue(" + key + ", " + value.toString() + ")");
-        serviceValues.put(key, value);
+        valuesLock.writeLock().lock();
+        try {
+            Log.i(TAG, "putServiceValue(" + key + ", " + value.toString() + ")");
+            serviceValues.put(key, value);
+        } finally {
+            valuesLock.writeLock().unlock();
+        }
     }
 
     /**
@@ -140,6 +177,7 @@ public class Session {
      * Used for clean testing.
      */
     public static void clearServiceValues(){
+
         serviceValues.clear();
     }
 
@@ -147,14 +185,13 @@ public class Session {
         return location;
     }
 
-    public static void setLocation(Location location) {
+    public static synchronized void setLocation(Location location) {
         Session.location = location;
     }
 
-
     public static PhoneMetaData getPhoneMetaData(){return phoneMetaData;}
 
-    public static void setPhoneMetaData(PhoneMetaData phoneMetaData) {
+    public static synchronized void setPhoneMetaData(PhoneMetaData phoneMetaData) {
         Session.phoneMetaData = phoneMetaData;
     }
 

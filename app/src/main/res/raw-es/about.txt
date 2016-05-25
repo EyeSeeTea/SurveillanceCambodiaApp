@@ -1,3 +1,7 @@
+<p><b>PSI’s Malaria Case Surveillance Application (MCS)</b></p>
+
+<p><b>Build %s</b></p>
+
 <p>
 Esta aplicación fue desarrollada por la PSI y es liberada bajo la GNU General Public License.
 Para obtener más información acerca de esta licencia, por favor visite la sección de "licencia" de la aplicación en el

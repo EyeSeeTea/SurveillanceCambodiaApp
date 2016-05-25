@@ -1,26 +1,28 @@
 /*
  * Copyright (c) 2015.
  *
- * This file is part of QIS Survelliance App.
+ * This file is part of QIS Surveillance App.
  *
- *  QIS Survelliance App is free software: you can redistribute it and/or modify
+ *  QIS Surveillance App is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  QIS Survelliance App is distributed in the hope that it will be useful,
+ *  QIS Surveillance App is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with QIS Survelliance App.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with QIS Surveillance App.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.eyeseetea.malariacare.utils;
 
+import android.content.Context;
 import android.util.Log;
 
+import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.database.model.Header;
 import org.eyeseetea.malariacare.database.model.Question;
 import org.eyeseetea.malariacare.database.model.Tab;
@@ -81,6 +83,19 @@ public class Utils {
         }
 
         return result;
+    }
+
+    public static String getCommitHash(Context context){
+        String stringCommit;
+        //Check if lastcommit.txt file exist, and if not exist show as unavailable.
+        int layoutId = context.getResources().getIdentifier("lastcommit", "raw", context.getPackageName());
+        if (layoutId == 0){
+            stringCommit=context.getString(R.string.unavailable);
+        } else {
+            InputStream commit = context.getResources().openRawResource( layoutId);
+            stringCommit= Utils.convertFromInputStreamToString(commit).toString();
+        }
+        return stringCommit;
     }
 
     public static StringBuilder convertFromInputStreamToString(InputStream inputStream){
@@ -182,15 +197,15 @@ public class Utils {
     }
 
     public static Calendar parseStringToCalendar(String datestring){
-        Calendar date = Calendar.getInstance();
+        Calendar calendar = Calendar.getInstance();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
         try {
-            date.setTime(format.parse(datestring));// all done
+            calendar.setTime(format.parse(datestring));// all done
         } catch (ParseException e) {
-            date=null;
+            calendar=null;
             e.printStackTrace();
         }
-        return date;
+        return calendar;
     }
 
     public static String getClosingDateString(String format){

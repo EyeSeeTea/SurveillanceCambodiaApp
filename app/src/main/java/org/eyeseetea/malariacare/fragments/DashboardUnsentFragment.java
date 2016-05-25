@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2015.
  *
- * This file is part of QIS Survelliance App.
+ * This file is part of QIS Surveillance App.
  *
- *  QIS Survelliance App is free software: you can redistribute it and/or modify
+ *  QIS Surveillance App is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  QIS Survelliance App is distributed in the hope that it will be useful,
+ *  QIS Surveillance App is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with QIS Survelliance App.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with QIS Surveillance App.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.eyeseetea.malariacare.fragments;
@@ -29,11 +29,11 @@ import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
+import android.text.Layout;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 
@@ -45,6 +45,7 @@ import org.eyeseetea.malariacare.database.utils.Session;
 import org.eyeseetea.malariacare.layout.adapters.dashboard.AssessmentUnsentAdapter;
 import org.eyeseetea.malariacare.layout.adapters.dashboard.IDashboardAdapter;
 import org.eyeseetea.malariacare.layout.listeners.SwipeDismissListViewTouchListener;
+import org.eyeseetea.malariacare.layout.utils.LayoutUtils;
 import org.eyeseetea.malariacare.network.PushClient;
 import org.eyeseetea.malariacare.network.PushResult;
 import org.eyeseetea.malariacare.receivers.AlarmPushReceiver;
@@ -241,29 +242,30 @@ public class DashboardUnsentFragment extends ListFragment {
         // we don't look for swipes.
         listView.setOnScrollListener(touchListener.makeScrollListener());
 
-        listView.setLongClickable(true);
-
-        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
-
-
-                new AlertDialog.Builder(getActivity())
-                        .setTitle(R.string.dialog_title_push)
-                        .setMessage(R.string.dialog_info_push_confirm)
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface arg0, int arg1) {
-                                final Survey survey = (Survey) adapter.getItem(position-1);
-                                AsyncPush asyncPush=new AsyncPush(survey);
-                                asyncPush.execute((Void) null);
-                            }
-                        })
-                        .setNegativeButton(android.R.string.no, null).create().show();
-
-
-                return true;
-            }
-        });
+        // Remove long click as push is done automatically now
+//        listView.setLongClickable(true);
+//
+//        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+//            @Override
+//            public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
+//
+//
+//                new AlertDialog.Builder(getActivity())
+//                        .setTitle(R.string.dialog_title_push)
+//                        .setMessage(R.string.dialog_info_push_confirm)
+//                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+//                            public void onClick(DialogInterface arg0, int arg1) {
+//                                final Survey survey = (Survey) adapter.getItem(position-1);
+//                                AsyncPush asyncPush=new AsyncPush(survey);
+//                                asyncPush.execute((Void) null);
+//                            }
+//                        })
+//                        .setNegativeButton(android.R.string.no, null).create().show();
+//
+//
+//                return true;
+//            }
+//        });
 
 
         setListShown(false);
@@ -300,16 +302,14 @@ public class DashboardUnsentFragment extends ListFragment {
         this.surveys.clear();
         this.surveys.addAll(newListSurveys);
         this.adapter.notifyDataSetChanged();
+        LayoutUtils.measureListViewHeightBasedOnChildren(getListView());
         setListShown(true);
     }
 
     public void manageSurveysAlarm(List<Survey> newListSurveys){
-        Log.d(TAG, "setSurveysAlarm (Thread: " + Thread.currentThread().getId() + "): " + newListSurveys.size());
-
-        // if survey list is not empty, the org_unit is not valid, and the server is invalid: run periodic task for survey push otherwise cancel active alarm.
-        PushClient pushClient= new PushClient(getActivity());
-        if(!newListSurveys.isEmpty()  && pushClient.isValidOrgUnit() && !pushClient.getIsInvalidServer() ) {
-            Survey.removeInProgress();
+        Log.d(TAG, "manageSurveysAlarm (Thread: " + Thread.currentThread().getId() + "): " + newListSurveys.size());
+        if(!newListSurveys.isEmpty()) {
+            //Survey.removeInProgress();
             alarmPush.setPushAlarm(getActivity());
         }else{
             alarmPush.cancelPushAlarm(getActivity());
@@ -328,8 +328,25 @@ public class DashboardUnsentFragment extends ListFragment {
             Log.d(TAG, "onReceive");
             //Listening only intents from this method
             if(SurveyService.ALL_UNSENT_SURVEYS_ACTION.equals(intent.getAction())) {
-                List<Survey> surveysUnsentFromService = (List<Survey>) Session.popServiceValue(SurveyService.ALL_UNSENT_SURVEYS_ACTION);
+                List<Survey> surveysUnsentFromService;
+                Session.valuesLock.readLock().lock();
+                try {
+                    surveysUnsentFromService = (List<Survey>) Session.popServiceValue(SurveyService.ALL_UNSENT_SURVEYS_ACTION);
+                } finally {
+                    Session.valuesLock.readLock().unlock();
+                }
                 reloadSurveys(surveysUnsentFromService);
+
+                // Measure the screen height
+                int screenHeight = LayoutUtils.measureScreenHeight(getActivity());
+
+                // Get the unsent list height, measured when reloading the surveys
+                int unsentHeight = LayoutUtils.getUnsentListHeight();
+
+                // Set the variable that establish the unsent list is shown or not
+                if (unsentHeight >= screenHeight) Session.setFullOfUnsent(getActivity());
+                else Session.setNotFullOfUnsent(getActivity());
+
                 manageSurveysAlarm(surveysUnsentFromService);
             }
         }
@@ -372,7 +389,10 @@ public class DashboardUnsentFragment extends ListFragment {
             String msg;
             if(pushResult.isSuccessful()){
                 msg=getActivity().getResources().getString(R.string.dialog_info_push_ok)+" \n"+String.format("Imported: %s | Updated: %s | Ignored: %s",pushResult.getImported(),pushResult.getUpdated(),pushResult.getIgnored());
-            }else{
+            } else if (pushResult.getImported().equals("0")){
+                msg=getActivity().getResources().getString(R.string.dialog_info_push_bad_credentials);
+            }
+            else{
                 msg=pushResult.getException().getMessage();
             }
 
