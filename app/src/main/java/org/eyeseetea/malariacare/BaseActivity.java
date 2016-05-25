@@ -128,10 +128,10 @@ public abstract class BaseActivity extends ActionBarActivity {
                 debugMessage("User asked for monitor");
                 goMonitor();
                 break;
-            case R.id.action_license:
-                debugMessage("User asked for license");
-                showAlertWithMessage(R.string.settings_menu_licence, R.raw.gpl);
-                break;
+//            case R.id.action_license:
+//                debugMessage("User asked for license");
+//                showAlertWithMessage(R.string.settings_menu_licence, R.raw.gpl);
+//                break;
             case R.id.action_about:
                 debugMessage("User asked for about");
                 showAlertWithHtmlMessageAndLastCommit(R.string.settings_menu_about, R.raw.about, BaseActivity.this);
@@ -204,6 +204,13 @@ public abstract class BaseActivity extends ActionBarActivity {
         survey.save();
         Session.setSurvey(survey);
 
+//        SurveyLocationListener locationListener = new SurveyLocationListener(survey.getId_survey());
+//        LocationManager locationManager = (LocationManager) LocationMemory.getContext().getSystemService(Context.LOCATION_SERVICE);
+//
+//        Intent targetActivityIntent = new Intent(this,DashboardActivity.class);
+//        finish();
+//        startActivity(targetActivityIntent);
+
         //Look for coordinates
         prepareLocationListener(survey);
 
@@ -216,15 +223,17 @@ public abstract class BaseActivity extends ActionBarActivity {
 
         SurveyLocationListener locationListener = new SurveyLocationListener(survey.getId_survey());
         LocationManager locationManager = (LocationManager) LocationMemory.getContext().getSystemService(Context.LOCATION_SERVICE);
-        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Log.d(TAG, "requestLocationUpdates via GPS");
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-        }
+
 
         if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
             Log.d(TAG, "requestLocationUpdates via NETWORK");
             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-        } else {
+        }
+        else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Log.d(TAG, "requestLocationUpdates via GPS");
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        }
+        else {
             Location lastLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
 
             if(lastLocation != null) {
@@ -298,21 +307,15 @@ public abstract class BaseActivity extends ActionBarActivity {
         showAlertWithLogoAndVersion(titleId, linkedMessage, context);
     }
 
+
     /**
      * Merge the lastcommit into the raw file
      * @param rawId Id of the raw text resource in HTML format
      */
     public String getMessageWithCommit(int rawId, Context context) {
         InputStream message = context.getResources().openRawResource(rawId);
-        String stringCommit;
-        //Check if lastcommit.txt file exist, and if not exist show as unavailable.
-        int layoutId = context.getResources().getIdentifier("lastcommit", "raw", context.getPackageName());
-        if (layoutId == 0){
-            stringCommit=context.getString(R.string.unavailable);
-        } else {
-            InputStream commit = context.getResources().openRawResource( layoutId);
-            stringCommit= Utils.convertFromInputStreamToString(commit).toString();
-        }
+
+        String stringCommit = Utils.getCommitHash(context);
         String stringMessage= Utils.convertFromInputStreamToString(message).toString();
         if(stringCommit.contains(context.getString(R.string.unavailable))){
             stringCommit=String.format(context.getString(R.string.lastcommit),stringCommit);
@@ -333,12 +336,12 @@ public abstract class BaseActivity extends ActionBarActivity {
 
         //set up text title
         TextView textTile = (TextView) dialog.findViewById(R.id.aboutTitle);
-        textTile.setText(BuildConfig.VERSION_NAME);
+        textTile.setText(BuildConfig.VERSION_NAME + " (bb)");
         textTile.setGravity(Gravity.RIGHT);
 
         //set up image view
-        ImageView img = (ImageView) dialog.findViewById(R.id.aboutImage);
-        img.setImageResource(R.drawable.psi);
+//        ImageView img = (ImageView) dialog.findViewById(R.id.aboutImage);
+//        img.setImageResource(R.drawable.psi);
 
         //set up text title
         TextView textContent = (TextView) dialog.findViewById(R.id.aboutMessage);

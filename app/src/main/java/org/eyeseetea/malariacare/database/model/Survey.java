@@ -267,6 +267,20 @@ public class Survey extends BaseModel  implements VisitableToSDK {
         return Constants.SURVEY_COMPLETED==this.status;
     }
 
+
+    /**
+     * Checks if the survey has been completed or not
+     * @return true|false
+     */
+    public boolean isCompleted(Long idSurvey){
+        Survey srv= new Select()
+                .from(Survey.class)
+                .where(Condition.column(Survey$Table.ID_SURVEY).eq(idSurvey)).querySingle();
+
+        return srv.getStatus().equals(Constants.SURVEY_COMPLETED);
+    }
+
+
     /**
      * Checks if the survey is in progress
      * @return true|false
@@ -618,7 +632,8 @@ public class Survey extends BaseModel  implements VisitableToSDK {
 
         if (values.size() > 0) {
             Value firstValue = values.get(0);
-            rdtValue = firstValue.getOption().getName();
+            if (firstValue.getOption() != null)
+                rdtValue = firstValue.getOption().getName();
         }
         return rdtValue;
     }

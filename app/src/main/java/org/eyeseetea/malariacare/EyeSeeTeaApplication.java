@@ -20,13 +20,11 @@
 package org.eyeseetea.malariacare;
 
 import android.app.Activity;
-import android.app.Application;
 import android.content.Context;
-import android.content.res.AssetManager;
 import android.support.multidex.MultiDex;
 import android.telephony.TelephonyManager;
 
-//import com.crashlytics.android.Crashlytics;
+import com.crashlytics.android.Crashlytics;
 import com.raizlabs.android.dbflow.config.FlowManager;
 import com.raizlabs.android.dbflow.sql.index.Index;
 
@@ -44,9 +42,10 @@ import org.eyeseetea.malariacare.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.database.utils.Session;
 import org.eyeseetea.malariacare.phonemetadata.PhoneMetaData;
 import org.eyeseetea.malariacare.utils.Constants;
+import org.eyeseetea.malariacare.utils.Utils;
 import org.hisp.dhis.android.sdk.persistence.Dhis2Application;
 
-//import io.fabric.sdk.android.Fabric;
+import io.fabric.sdk.android.Fabric;
 
 /**
  * Created by nacho on 04/08/15.
@@ -56,7 +55,7 @@ public class EyeSeeTeaApplication extends Dhis2Application {
     @Override
     public void onCreate() {
         super.onCreate();
-//        Fabric.with(this, new Crashlytics());
+        Fabric.with(this, new Crashlytics());
         PreferencesState.getInstance().init(getApplicationContext());
         LocationMemory.getInstance().init(getApplicationContext());
 
@@ -88,6 +87,8 @@ public class EyeSeeTeaApplication extends Dhis2Application {
         phoneMetaData.setImei(imei);
         phoneMetaData.setPhone_number(phone);
         phoneMetaData.setPhone_serial(serial);
+        phoneMetaData.setBuild_number(Utils.getCommitHash(getApplicationContext()));
+
         return phoneMetaData;
     }
 
