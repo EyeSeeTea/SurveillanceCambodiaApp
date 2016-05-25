@@ -1,27 +1,27 @@
 /*
  * Copyright (c) 2015.
  *
- * This file is part of QIS Survelliance App.
+ * This file is part of QIS Surveillance App.
  *
- *  QIS Survelliance App is free software: you can redistribute it and/or modify
+ *  QIS Surveillance App is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  QIS Survelliance App is distributed in the hope that it will be useful,
+ *  QIS Surveillance App is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with QIS Survelliance App.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with QIS Surveillance App.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.eyeseetea.malariacare;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.location.Location;
@@ -33,20 +33,20 @@ import android.text.SpannableString;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.raizlabs.android.dbflow.sql.builder.Condition;
 import com.raizlabs.android.dbflow.sql.language.Select;
 
-import org.eyeseetea.malariacare.database.model.OrgUnit;
-import org.eyeseetea.malariacare.database.model.OrgUnit$Table;
 import org.eyeseetea.malariacare.database.model.Program;
-import org.eyeseetea.malariacare.database.model.Program$Table;
 import org.eyeseetea.malariacare.database.model.Survey;
+import org.eyeseetea.malariacare.database.model.TabGroup;
 import org.eyeseetea.malariacare.database.utils.LocationMemory;
 import org.eyeseetea.malariacare.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.database.utils.Session;
@@ -55,7 +55,6 @@ import org.eyeseetea.malariacare.layout.utils.LayoutUtils;
 import org.eyeseetea.malariacare.utils.Utils;
 
 import java.io.InputStream;
-import java.util.List;
 
 
 public abstract class BaseActivity extends ActionBarActivity {
@@ -65,9 +64,7 @@ public abstract class BaseActivity extends ActionBarActivity {
      */
     public static final String SETTINGS_CALLER_ACTIVITY = "SETTINGS_CALLER_ACTIVITY";
 
-    private static String TAG=".BaseActivity";
-
-    private SurveyLocationListener locationListener;
+    protected static String TAG=".BaseActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +85,19 @@ public abstract class BaseActivity extends ActionBarActivity {
 
         if (savedInstanceState == null){
             initTransition();
+        }
+    }
+
+    /**
+     * Adds actionbar to the activity
+     */
+    public void createActionBar(){
+        Program program = Program.getFirstProgram();
+
+        if (program != null) {
+            android.support.v7.app.ActionBar actionBar = this.getSupportActionBar();
+            LayoutUtils.setActionBarLogo(actionBar);
+            LayoutUtils.setActionBarText(actionBar, PreferencesState.getInstance().getOrgUnit(), program.getName());
         }
     }
 
@@ -114,18 +124,30 @@ public abstract class BaseActivity extends ActionBarActivity {
                 debugMessage("User asked for settings");
                 goSettings();
                 break;
-            case R.id.action_license:
-                debugMessage("User asked for license");
-                showAlertWithMessage(R.string.settings_menu_licence, R.raw.gpl);
+            case R.id.action_monitoring:
+                debugMessage("User asked for monitor");
+                goMonitor();
                 break;
+//            case R.id.action_license:
+//                debugMessage("User asked for license");
+//                showAlertWithMessage(R.string.settings_menu_licence, R.raw.gpl);
+//                break;
             case R.id.action_about:
                 debugMessage("User asked for about");
-                showAlertWithHtmlMessage(R.string.settings_menu_about, R.raw.about);
+                showAlertWithHtmlMessageAndLastCommit(R.string.settings_menu_about, R.raw.about, BaseActivity.this);
                 break;
-            /*case R.id.action_logout:
-                debugMessage("User asked for logout");
-                logout();
-                break;*/
+            case R.id.action_copyright:
+                debugMessage("User asked for copyright");
+                showAlertWithMessage(R.string.settings_menu_copyright, R.raw.copyright);
+                break;
+            case R.id.action_licenses:
+                debugMessage("User asked for software licenses");
+                showAlertWithHtmlMessage(R.string.settings_menu_licenses, R.raw.licenses);
+                break;
+            case R.id.action_eula:
+                debugMessage("User asked for EULA");
+                showAlertWithHtmlMessage(R.string.settings_menu_eula, R.raw.eula);
+                break;
             case android.R.id.home:
                 debugMessage("Go back");
                 onBackPressed();
@@ -171,29 +193,23 @@ public abstract class BaseActivity extends ActionBarActivity {
         startActivity(new Intent(this, SettingsActivity.class));
     }
 
-    /**
-     * Closes current session and goes back to loginactivity
-     */
-    protected void logout(){
-        new AlertDialog.Builder(this)
-                .setTitle(getApplicationContext().getString(R.string.settings_menu_logout))
-                .setMessage(getApplicationContext().getString(R.string.dialog_content_logout_confirmation))
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface arg0, int arg1) {
-                        Session.logout();
-                        finishAndGo(DashboardActivity.class);
-                    }
-                })
-                .setNegativeButton(android.R.string.no, null).create().show();
+    protected void goMonitor(){
+        startActivity(new Intent(this, MonitorActivity.class));
     }
 
     public void newSurvey(View v){
-        //Get Programs from database
-        List<Program> firstProgram = new Select().from(Program.class).where(Condition.column(Program$Table.ID_PROGRAM).eq(1)).queryList();
+        TabGroup tabGroup = new Select().from(TabGroup.class).querySingle();
         // Put new survey in session
-        Survey survey = new Survey(null, firstProgram.get(0), Session.getUser());
+        Survey survey = new Survey(null, tabGroup, Session.getUser());
         survey.save();
         Session.setSurvey(survey);
+
+//        SurveyLocationListener locationListener = new SurveyLocationListener(survey.getId_survey());
+//        LocationManager locationManager = (LocationManager) LocationMemory.getContext().getSystemService(Context.LOCATION_SERVICE);
+//
+//        Intent targetActivityIntent = new Intent(this,DashboardActivity.class);
+//        finish();
+//        startActivity(targetActivityIntent);
 
         //Look for coordinates
         prepareLocationListener(survey);
@@ -202,19 +218,22 @@ public abstract class BaseActivity extends ActionBarActivity {
         finishAndGo(SurveyActivity.class);
     }
 
+
     private void prepareLocationListener(Survey survey){
 
-        locationListener = new SurveyLocationListener(survey.getId_survey());
+        SurveyLocationListener locationListener = new SurveyLocationListener(survey.getId_survey());
         LocationManager locationManager = (LocationManager) LocationMemory.getContext().getSystemService(Context.LOCATION_SERVICE);
-        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Log.d(TAG, "requestLocationUpdates via GPS");
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-        }
+
 
         if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
             Log.d(TAG, "requestLocationUpdates via NETWORK");
             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-        } else {
+        }
+        else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Log.d(TAG, "requestLocationUpdates via GPS");
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        }
+        else {
             Location lastLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
 
             if(lastLocation != null) {
@@ -274,6 +293,72 @@ public abstract class BaseActivity extends ActionBarActivity {
         Linkify.addLinks(linkedMessage, Linkify.ALL);
         showAlert(titleId, linkedMessage);
     }
+
+    /**
+            * Shows an alert dialog with a big message inside based on a raw resource HTML formatted
+    * @param titleId Id of the title resource
+    * @param rawId Id of the raw text resource in HTML format
+    */
+    public void showAlertWithHtmlMessageAndLastCommit(int titleId, int rawId, Context context){
+        String stringMessage = getMessageWithCommit(rawId, context);
+        final SpannableString linkedMessage = new SpannableString(Html.fromHtml(stringMessage));
+        Linkify.addLinks(linkedMessage, Linkify.EMAIL_ADDRESSES | Linkify.WEB_URLS);
+
+        showAlertWithLogoAndVersion(titleId, linkedMessage, context);
+    }
+
+
+    /**
+     * Merge the lastcommit into the raw file
+     * @param rawId Id of the raw text resource in HTML format
+     */
+    public String getMessageWithCommit(int rawId, Context context) {
+        InputStream message = context.getResources().openRawResource(rawId);
+
+        String stringCommit = Utils.getCommitHash(context);
+        String stringMessage= Utils.convertFromInputStreamToString(message).toString();
+        if(stringCommit.contains(context.getString(R.string.unavailable))){
+            stringCommit=String.format(context.getString(R.string.lastcommit),stringCommit);
+            stringCommit=stringCommit+" "+context.getText(R.string.lastcommit_unavailable);
+        }
+        else {
+            stringCommit = String.format(context.getString(R.string.lastcommit), stringCommit);
+        }
+        stringMessage=String.format(stringMessage,stringCommit);
+        return stringMessage;
+    }
+
+    public void showAlertWithLogoAndVersion(int titleId, CharSequence text, Context context){
+        final Dialog dialog = new Dialog(context);
+        dialog.setContentView(R.layout.dialog_about);
+        dialog.setTitle(titleId);
+        dialog.setCancelable(true);
+
+        //set up text title
+        TextView textTile = (TextView) dialog.findViewById(R.id.aboutTitle);
+        textTile.setText(BuildConfig.VERSION_NAME);
+        textTile.setGravity(Gravity.RIGHT);
+
+        //set up image view
+//        ImageView img = (ImageView) dialog.findViewById(R.id.aboutImage);
+//        img.setImageResource(R.drawable.psi);
+
+        //set up text title
+        TextView textContent = (TextView) dialog.findViewById(R.id.aboutMessage);
+        textContent.setMovementMethod(LinkMovementMethod.getInstance());
+        textContent.setText(text);
+        //set up button
+        Button button = (Button) dialog.findViewById(R.id.aboutButton);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        //now that the dialog is set up, it's time to show it
+        dialog.show();
+    }
+
     /**
      * Shows an alert dialog with a given string
      * @param titleId Id of the title resource
