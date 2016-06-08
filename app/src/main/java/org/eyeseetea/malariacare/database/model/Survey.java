@@ -28,9 +28,11 @@ import com.raizlabs.android.dbflow.sql.language.Join;
 import com.raizlabs.android.dbflow.sql.language.Select;
 import com.raizlabs.android.dbflow.structure.BaseModel;
 
+import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.database.AppDatabase;
 import org.eyeseetea.malariacare.database.iomodules.dhis.exporter.IConvertToSDKVisitor;
 import org.eyeseetea.malariacare.database.iomodules.dhis.exporter.VisitableToSDK;
+import org.eyeseetea.malariacare.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.database.utils.SurveyAnsweredRatio;
 import org.eyeseetea.malariacare.database.utils.SurveyAnsweredRatioCache;
 import org.eyeseetea.malariacare.utils.Constants;
@@ -551,6 +553,17 @@ public class Survey extends BaseModel  implements VisitableToSDK {
     }
 
     /**
+     * Returns all the surveys with status put to "Sent"
+     * @return
+     */
+    public static List<Survey> getAllSurveysToBeSent() {
+        return new Select().from(Survey.class)
+                .where(Condition.column(Survey$Table.STATUS).eq(Constants.SURVEY_COMPLETED))
+                .orderBy(Survey$Table.EVENTDATE)
+                .orderBy(Survey$Table.ID_ORG_UNIT).queryList();
+    }
+
+    /**
      * Returns all the surveys
      * @return
      */
@@ -638,9 +651,13 @@ public class Survey extends BaseModel  implements VisitableToSDK {
         }
 
         if (values.size() > 0) {
-            Value firstValue = values.get(0);
-            if (firstValue.getOption() != null)
-                rdtValue = firstValue.getOption().getName();
+            for(Value value:values){
+                //Find the RTS option
+                if(value.getOption()!=null && value.getQuestion()!=null && value.getQuestion().getCode().equals(PreferencesState.getInstance().getContext().getString(R.string.test_code))){
+                    rdtValue = value.getOption().getName();
+                }
+            }
+
         }
         return rdtValue;
     }
@@ -770,6 +787,10 @@ public class Survey extends BaseModel  implements VisitableToSDK {
         Map map = new HashMap();
         while(iterator.hasNext() && valid){
             Value value = iterator.next();
+            //The control dataelements not have questions and its should be ignored
+            if(value.getQuestion()==null){
+                continue;
+            }
             String qCode = value.getQuestion().getCode();
 
             // RDT is the first field: if it is not Positive no values are shown
