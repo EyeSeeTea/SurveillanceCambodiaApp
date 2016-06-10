@@ -377,6 +377,17 @@ public class Survey extends BaseModel  implements VisitableToSDK {
     }
 
     /**
+     * Returns the list of answered values from this survey
+     * @return
+     */
+    public List<Value> getValuesFromDB(){
+        values = new Select()
+                .from(Value.class)
+                .where(Condition.column(Value$Table.ID_SURVEY)
+                        .eq(this.getId_survey())).queryList();
+        return values;
+    }
+    /**
      * Returns the list of previous schedules for this survey
      * @return
      */
@@ -626,18 +637,7 @@ public class Survey extends BaseModel  implements VisitableToSDK {
      * @return true|false
      */
     public boolean isRDT(){
-        if(values==null){
-            values=Value.listAllBySurvey(this);
-        }
-
-        Boolean hasValues = !(values==null || values.isEmpty());
-        if(hasValues){
-            Value rdtValue=values.get(0);
-            return rdtValue.isAPositive();
-        }
-
-        return true;
-
+        return getRDT().equals(PreferencesState.getInstance().getContext().getResources().getString(R.string.rdtPositive));
     }
 
     /**
@@ -653,7 +653,7 @@ public class Survey extends BaseModel  implements VisitableToSDK {
         if (values.size() > 0) {
             for(Value value:values){
                 //Find the RTS option
-                if(value.getOption()!=null && value.getQuestion()!=null && value.getQuestion().getCode().equals(PreferencesState.getInstance().getContext().getString(R.string.test_code))){
+                if(value.getOption()!=null && value.getQuestion()!=null && value.getQuestion().getCode().equals(PreferencesState.getInstance().getContext().getString(R.string.RDT_code))){
                     rdtValue = value.getOption().getName();
                 }
             }
@@ -775,45 +775,48 @@ public class Survey extends BaseModel  implements VisitableToSDK {
         Iterator<Value> iterator=values.iterator();
 
         String valuesStr="";
-        boolean valid = true;
 
         //Define a filter to select which values will be turned into string by code_question
         List<String> codeQuestionFilter = new ArrayList<String>() {{
-            add("Specie");  //4
-            add("Sex");     //2
-            add("Age");     //3
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Specie_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Gender_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Age_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Reason_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Treatment_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.DHAPIP_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.ASMQ_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Referral_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Classification_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Occupation_code));
+            add(PreferencesState.getInstance().getContext().getResources().getString(R.string.Phone_code));
         }};
 
         Map map = new HashMap();
-        while(iterator.hasNext() && valid){
+        while(iterator.hasNext()){
             Value value = iterator.next();
             //The control dataelements not have questions and its should be ignored
-            if(value.getQuestion()==null){
+            if(value.getQuestion()==null || value.getValue()==null){
                 continue;
             }
             String qCode = value.getQuestion().getCode();
 
-            // RDT is the first field: if it is not Positive no values are shown
-            if(("RDT").equals(qCode) && !value.isAPositive()){
-                valid = false;
-            }else{
-                if(codeQuestionFilter.contains(qCode)) {
+             if(codeQuestionFilter.contains(qCode)) {
                     String val = (value.getOption()!=null)?value.getOption().getCode():value.getValue();
-                    map.put(qCode, val);
+                    if(val!=null)
+                        map.put(qCode, val);
                 }
             }
-        }
-
-        if(valid) {
             //Sort values
             for(int i=0; i<codeQuestionFilter.size(); i++){
-                valuesStr += map.get(codeQuestionFilter.get(i));
-                if (i < codeQuestionFilter.size()-1) {
-                    valuesStr += ", ";
+                if(map.get(codeQuestionFilter.get(i))!=null) {
+                    valuesStr += map.get(codeQuestionFilter.get(i));
+                    if (i < codeQuestionFilter.size() - 1) {
+                        valuesStr += ", ";
+                    }
                 }
             }
-        }
-
+        if(valuesStr.endsWith(", "))
+            valuesStr=valuesStr.substring(0,valuesStr.lastIndexOf(", "));
         return valuesStr;
     }
 
@@ -827,6 +830,38 @@ public class Survey extends BaseModel  implements VisitableToSDK {
         return new Select().from(Survey.class)
                 .where(Condition.column(Survey$Table.STATUS).eq(Constants.SURVEY_SENT))
                 .and(Condition.column(Survey$Table.EVENTDATE).greaterThanOrEq(minDateForMonitor)).queryList();
+    }
+
+
+    public String printValues() {
+        String valuesString = "Survey values: ";
+        if(getValuesFromDB()!=null)
+            for(Value value:values){
+                valuesString += "Value: " + value.getValue();
+                if(value.getOption()!=null)
+                    valuesString+= " Option: " + value.getOption().getName();
+                if(value.getQuestion()!=null)
+                    valuesString+=" Question: " + value.getQuestion().getDe_name() + "\n";
+            }
+        return valuesString;
+    }
+
+    public void removeChildrenValuesFromQuestionRecursively(Question question) {
+        List<Value> values= getValuesFromDB();
+        List<Question> questionChildren=question.getChildren();
+        for (int i=values.size()-1;i>0;i--) {
+            if(questionChildren.contains(values.get(i).getQuestion())){
+                removeValue(values.get(i));
+                for(Question child: questionChildren) {
+                    removeChildrenValuesFromQuestionRecursively(child);
+                }
+            }
+        }
+
+    }
+
+    private static void removeValue(Value value) {
+        value.delete();
     }
 
     @Override

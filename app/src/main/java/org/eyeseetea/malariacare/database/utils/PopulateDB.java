@@ -96,6 +96,7 @@ public class PopulateDB {
     static Map<Integer, Answer> answerList = new LinkedHashMap<Integer, Answer>();
     static Map<Integer, QuestionRelation> questionRelationList = new LinkedHashMap();
     static Map<Integer, Match> matchList = new LinkedHashMap();
+    static Map<Integer, QuestionOption> questionOptionList = new LinkedHashMap();
 
 
     public static void populateDB(AssetManager assetManager) throws IOException {
@@ -180,13 +181,14 @@ public class PopulateDB {
                         if (!line[11].equals(""))
                             question.setQuestion(questionList.get(Integer.valueOf(line[11])));
                         question.setOutput(Integer.valueOf(line[12]));
+                        question.setTotalQuestions(Integer.valueOf(line[13]));
                         question.save();
                         questionList.put(Integer.valueOf(line[0]), question);
                         break;
                     case QUESTION_RELATIONS_CSV:
                         QuestionRelation questionRelation = new QuestionRelation();
-                        questionRelation.setQuestion(questionList.get(Integer.valueOf(line[1])));
-                        questionRelation.setOperation(Integer.valueOf(line[2]));
+                        questionRelation.setOperation(Integer.valueOf(line[1]));
+                        questionRelation.setQuestion(questionList.get(Integer.valueOf(line[2])));
                         questionRelation.save();
                         questionRelationList.put(Integer.valueOf(line[0]),questionRelation);
                         break;
@@ -202,6 +204,8 @@ public class PopulateDB {
                         questionOption.setOption(optionList.get(Integer.valueOf(line[2])));
                         questionOption.setMatch(matchList.get(Integer.valueOf(line[3])));
                         questionOption.save();
+                        questionOptionList.put(Integer.valueOf(line[0]),questionOption);
+                        break;
                 }
             }
             reader.close();
@@ -227,6 +231,7 @@ public class PopulateDB {
         answerList.clear();
         questionRelationList.clear();
         matchList.clear();
+        questionOptionList.clear();
     }
 
     /**
@@ -264,5 +269,21 @@ public class PopulateDB {
                 FailedItem.class
         );
         DateTimeManager.getInstance().delete();
+    }
+
+    public static void addTotalQuestions(AssetManager assetManager, List<Question> questions) throws IOException {
+        //Reset inner references
+        CSVReader reader = new CSVReader(new InputStreamReader(assetManager.open(QUESTIONS_CSV)), SEPARATOR, QUOTECHAR);
+
+        String[] line;
+        while ((line = reader.readNext()) != null) {
+            for (Question question : questions) {
+                if (question.getUid().equals(line[5])) {
+                    question.setTotalQuestions(Integer.valueOf(line[13]));
+                    question.save();
+                }
+            }
+        }
+        reader.close();
     }
 }

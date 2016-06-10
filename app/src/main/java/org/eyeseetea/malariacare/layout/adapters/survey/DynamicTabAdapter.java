@@ -68,6 +68,7 @@ import org.eyeseetea.malariacare.database.model.Option;
 import org.eyeseetea.malariacare.database.model.Question;
 import org.eyeseetea.malariacare.database.model.Tab;
 import org.eyeseetea.malariacare.database.model.Value;
+import org.eyeseetea.malariacare.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.database.utils.ReadWriteDB;
 import org.eyeseetea.malariacare.database.utils.Session;
 import org.eyeseetea.malariacare.layout.adapters.survey.navigation.NavigationBuilder;
@@ -125,6 +126,11 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
      */
     private boolean readOnly;
 
+    /**
+     * View needed to close the keyboard in methods with view
+     */
+    View keyboardView;
+
     public DynamicTabAdapter(Tab tab, Context context) {
         this.lInflater = LayoutInflater.from(context);
         this.context = context;
@@ -133,6 +139,7 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
         this.navigationController = initNavigationController(tab);
         this.readOnly = Session.getSurvey() != null && !Session.getSurvey().isInProgress();
         this.isSwipeAdded=false;
+        navigationController.setTotalPages(navigationController.getCurrentQuestion().getTotalQuestions());
     }
 
     private NavigationController initNavigationController(Tab tab) {
@@ -156,7 +163,13 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
 
                 Option selectedOption=(Option)view.getTag();
                 Question question=navigationController.getCurrentQuestion();
-                ReadWriteDB.saveValuesDDL(question, selectedOption);
+
+
+                Value value = question.getValueBySession();
+                //set new totalpages if the value is not null and the value change
+                if(value!=null)
+                    navigationController.setTotalPages(question.getTotalQuestions());
+                ReadWriteDB.saveValuesDDL(question, selectedOption, value);
 
                 ViewGroup vgTable = (ViewGroup) view.getParent().getParent();
                 for (int rowPos = 0; rowPos < vgTable.getChildCount(); rowPos++) {
@@ -381,19 +394,33 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
         return current.concat("/").concat(total);
     }
 
-
     private void showKeyboard(Context c, View v){
+        Log.d(TAG,"KEYBOARD SHOW ");
+        keyboardView=v;
         InputMethodManager keyboard = (InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE);
         keyboard.showSoftInput(v, 0);
-
     }
 
+    /**
+     * hide keyboard using a provided view
+     */
     private void hideKeyboard(Context c, View v){
+        Log.d(TAG,"KEYBOARD HIDE ");
         InputMethodManager keyboard = (InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE);
-        keyboard.hideSoftInputFromWindow(v.getWindowToken(), 0);
+        if(v!=null)
+            keyboard.hideSoftInputFromWindow(v.getWindowToken(), 0);
+       }
+
+
+    /**
+     * hide keyboard using a keyboardView variable view
+     */
+    private void hideKeyboard(Context c){
+        Log.d(TAG,"KEYBOARD HIDE ");
+        InputMethodManager keyboard = (InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if(keyboardView!=null)
+            keyboard.hideSoftInputFromWindow(keyboardView.getWindowToken(), 0);
     }
-
-
     /**
      * Initialise NumberPicker and button to view/edit a integer between 0 and Constants.MAX_INT_AGE
      * @param tableRow
@@ -430,7 +457,6 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
                     }
                     Question question = navigationController.getCurrentQuestion();
                     ReadWriteDB.saveValuesText(question, positiveIntValue);
-                    hideKeyboard(context,v);
                     finishOrNext();
                 }
             });
@@ -700,12 +726,14 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
                 .setMessage(R.string.survey_info_completed)
                 .setPositiveButton(R.string.send, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int arg1) {
+                        hideKeyboard(PreferencesState.getInstance().getContext());
                         DashboardActivity.dashboardActivity.closeSurveyFragment();
                     }
                 });
         if(!navigationController.isFirstQuestion()){
             msgConfirmation.setNegativeButton(R.string.review, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int arg1) {
+                    hideKeyboard(PreferencesState.getInstance().getContext());
                     review();
                 }
             });
@@ -734,6 +762,13 @@ public class DynamicTabAdapter extends BaseAdapter implements ITabAdapter {
         }
         navigationController.next(value!=null?value.getOption():null);
         notifyDataSetChanged();
+        hideKeyboard(PreferencesState.getInstance().getContext());
+
+        question = navigationController.getCurrentQuestion();
+        value = question.getValueBySession();
+        //set new page number if the value is null
+        if(value==null)
+            navigationController.setTotalPages(navigationController.getCurrentQuestion().getTotalQuestions());
     }
 
     /**
