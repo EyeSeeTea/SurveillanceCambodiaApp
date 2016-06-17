@@ -21,6 +21,7 @@
 package org.eyeseetea.malariacare.database.utils;
 
 import android.content.res.AssetManager;
+import android.util.Log;
 
 import com.opencsv.CSVReader;
 import com.raizlabs.android.dbflow.runtime.TransactionManager;
@@ -44,6 +45,10 @@ import org.eyeseetea.malariacare.database.model.Tab;
 import org.eyeseetea.malariacare.database.model.TabGroup;
 import org.eyeseetea.malariacare.database.model.User;
 import org.eyeseetea.malariacare.database.model.Value;
+import org.hisp.dhis.android.sdk.persistence.models.DataValue;
+import org.hisp.dhis.android.sdk.persistence.models.Event;
+import org.hisp.dhis.android.sdk.persistence.models.FailedItem;
+import org.hisp.dhis.android.sdk.persistence.preferences.DateTimeManager;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -62,6 +67,25 @@ public class PopulateDB {
     public static final String OPTION_ATTRIBUTES_CSV = "OptionAttributes.csv";
     public static final String OPTIONS_CSV = "Options.csv";
     public static final String QUESTIONS_CSV = "Questions.csv";
+    public static final String QUESTION_OPTIONS_CSV="QuestionOptions.csv";
+    public static final String  MATCHES = "Matches.csv";
+    public static final String QUESTION_RELATIONS_CSV="QuestionRelations.csv";
+
+    private static final List<String> tables2populate = Arrays.asList(
+            PROGRAMS_CSV,
+            TAB_GROUPS_CSV,
+            TABS_CSV,
+            HEADERS_CSV,
+            ANSWERS_CSV,
+            OPTION_ATTRIBUTES_CSV,
+            OPTIONS_CSV,
+            QUESTIONS_CSV,
+            QUESTION_RELATIONS_CSV,
+            MATCHES,
+            QUESTION_OPTIONS_CSV);
+    public static final char SEPARATOR = ';';
+    public static final char QUOTECHAR = '\'';
+
     static Map<Integer, Program> programList = new LinkedHashMap<Integer, Program>();
     static Map<Integer, TabGroup> tabGroups = new LinkedHashMap<Integer, TabGroup>();
     static Map<Integer, Tab> tabList = new LinkedHashMap<Integer, Tab>();
@@ -70,15 +94,17 @@ public class PopulateDB {
     static Map<Integer, OptionAttribute> optionAttributeList = new LinkedHashMap<Integer, OptionAttribute>();
     static Map<Integer, Option> optionList = new LinkedHashMap<Integer, Option>();
     static Map<Integer, Answer> answerList = new LinkedHashMap<Integer, Answer>();
+    static Map<Integer, QuestionRelation> questionRelationList = new LinkedHashMap();
+    static Map<Integer, Match> matchList = new LinkedHashMap();
+    static Map<Integer, QuestionOption> questionOptionList = new LinkedHashMap();
 
 
     public static void populateDB(AssetManager assetManager) throws IOException {
 
-        List<String> tables2populate = Arrays.asList(PROGRAMS_CSV, TAB_GROUPS_CSV,TABS_CSV, HEADERS_CSV, ANSWERS_CSV, OPTION_ATTRIBUTES_CSV, OPTIONS_CSV, QUESTIONS_CSV);
-
-        CSVReader reader = null;
+        //Reset inner references
+        cleanInnerLists();
         for (String table : tables2populate) {
-            reader = new CSVReader(new InputStreamReader(assetManager.open(table)), ';', '\'');
+            CSVReader reader = new CSVReader(new InputStreamReader(assetManager.open(table)), SEPARATOR, QUOTECHAR);
 
             String[] line;
             while ((line = reader.readNext()) != null) {
@@ -155,20 +181,58 @@ public class PopulateDB {
                         if (!line[11].equals(""))
                             question.setQuestion(questionList.get(Integer.valueOf(line[11])));
                         question.setOutput(Integer.valueOf(line[12]));
+                        question.setTotalQuestions(Integer.valueOf(line[13]));
+                        question.setVisible(Integer.valueOf(line[14]));
                         question.save();
                         questionList.put(Integer.valueOf(line[0]), question);
                         break;
-
+                    case QUESTION_RELATIONS_CSV:
+                        QuestionRelation questionRelation = new QuestionRelation();
+                        questionRelation.setOperation(Integer.valueOf(line[1]));
+                        questionRelation.setQuestion(questionList.get(Integer.valueOf(line[2])));
+                        questionRelation.save();
+                        questionRelationList.put(Integer.valueOf(line[0]),questionRelation);
+                        break;
+                    case MATCHES:
+                        Match match = new Match();
+                        match.setQuestionRelation(questionRelationList.get(Integer.valueOf(line[1])));
+                        match.save();
+                        matchList.put(Integer.valueOf(line[0]),match);
+                        break;
+                    case QUESTION_OPTIONS_CSV:
+                        QuestionOption questionOption = new QuestionOption();
+                        questionOption.setQuestion(questionList.get(Integer.valueOf(line[1])));
+                        questionOption.setOption(optionList.get(Integer.valueOf(line[2])));
+                        questionOption.setMatch(matchList.get(Integer.valueOf(line[3])));
+                        questionOption.save();
+                        questionOptionList.put(Integer.valueOf(line[0]),questionOption);
+                        break;
                 }
             }
             reader.close();
         }
+        //Free references since the maps are static
+        cleanInnerLists();
     }
 
     /**
      * Used for testing purposes
      */
     public static void populateDummyData(){
+    }
+
+    private static void cleanInnerLists(){
+        programList.clear();
+        tabGroups.clear();
+        tabList.clear();
+        headerList.clear();
+        questionList.clear();
+        optionAttributeList.clear();
+        optionList.clear();
+        answerList.clear();
+        questionRelationList.clear();
+        matchList.clear();
+        questionOptionList.clear();
     }
 
     /**
@@ -196,4 +260,46 @@ public class PopulateDB {
         );
     }
 
+    /**
+     * Deletes all data from the sdk database
+     */
+    public static void wipeSDKData() {
+        Delete.tables(
+                Event.class,
+                DataValue.class,
+                FailedItem.class
+        );
+        DateTimeManager.getInstance().delete();
+    }
+
+    public static void addTotalQuestions(AssetManager assetManager, List<Question> questions) throws IOException {
+        //Reset inner references
+        CSVReader reader = new CSVReader(new InputStreamReader(assetManager.open(QUESTIONS_CSV)), SEPARATOR, QUOTECHAR);
+
+        String[] line;
+        while ((line = reader.readNext()) != null) {
+            for (Question question : questions) {
+                if (question.getUid().equals(line[5])) {
+                    question.setTotalQuestions(Integer.valueOf(line[13]));
+                    question.save();
+                }
+            }
+        }
+        reader.close();
+    }
+    public static void addVisibleQuestions(AssetManager assetManager, List<Question> questions) throws IOException {
+        //Reset inner references
+        CSVReader reader = new CSVReader(new InputStreamReader(assetManager.open(QUESTIONS_CSV)), SEPARATOR, QUOTECHAR);
+
+        String[] line;
+        while ((line = reader.readNext()) != null) {
+            for (Question question : questions) {
+                if (question.getUid().equals(line[5])) {
+                    question.setVisible(Integer.valueOf(line[14]));
+                    question.save();
+                }
+            }
+        }
+        reader.close();
+    }
 }
