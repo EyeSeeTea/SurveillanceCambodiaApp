@@ -30,8 +30,8 @@ android {
         applicationId 'org.eyeseetea.surveillance_kh'
         minSdkVersion 15
         targetSdkVersion 21
-        versionCode 7
-        versionName "1.2.3"
+        versionCode 9
+        versionName "1.2.4"
         multiDexEnabled true
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
