@@ -58,11 +58,11 @@ android {
     }
     productFlavors {
         cambodia {
-            applicationId 'org.eyeseetea.surveillance_kh_bb'
+            applicationId 'org.eyeseetea.surveillance_kh'
             versionName "1.2.5"
         }
         laos {
-            applicationId 'org.eyeseetea.surveillance_la_bb'
+            applicationId 'org.eyeseetea.surveillance_la'
             versionName "1.2.5"
         }
     }
