@@ -19,6 +19,7 @@
 package org.eyeseetea.malariacare.monitor.utils;
 
 import org.eyeseetea.malariacare.database.model.Survey;
+import org.eyeseetea.malariacare.database.model.Value;
 
 /**
  * Decorator that tells if a survey has specific info
@@ -34,6 +35,10 @@ public class SurveyMonitor extends BaseSurveyMonitor {
      * Id of treatment question
      */
     protected final static Long ID_QUESTION_TREATMENT=11l;
+    /**
+     * Id of counter question
+     */
+    protected final static Long ID_QUESTION_COUNTER=6l;
 
     /**
      * Id of reason question (pregnant, severe, denied, drug)
@@ -41,10 +46,17 @@ public class SurveyMonitor extends BaseSurveyMonitor {
     private final static Long ID_QUESTION_REASON=2l;
 
     /**
-     * Id of treatment question
+     * Id of not tested
      */
-    private final static Long ID_QUESTION_SUBMISION=12l;
-
+    final static Long ID_OPTION_RDT_TESTED =1l;
+    /**
+     * Id of not tested
+     */
+    final static Long ID_OPTION_RDT_NOT_TESTED =2l;
+    /**
+     * Id of negative  specie option
+     */
+    final static Long ID_OPTION_TEST_NEGATIVE =9l;
     /**
      * Id of pv specie option
      */
@@ -60,39 +72,14 @@ public class SurveyMonitor extends BaseSurveyMonitor {
     final static Long ID_OPTION_SPECIE_PFPV =12l;
 
     /**
-     * Id of referral treatment option
-     */
-    final static Long ID_OPTION_TREATMENT_REFERRAL=13l;
-
-    /**
-     * Id of hospital treatment option
-     */
-    private final static Long ID_OPTION_HOSPITAL=23l;
-
-    /**
-     * Id of severe reason option
-     */
-    private final static Long ID_OPTION_SEVERE=3l;
-
-    /**
-     * Id of pregnant reason option
-     */
-    private final static Long ID_OPTION_PREGNANT=4l;
-
-    /**
-     * Id of refused reason option
-     */
-    private final static Long ID_OPTION_DENIED=5l;
-
-    /**
      * Id of rdt stockout reason option
      */
-    private final static Long ID_OPTION_DRUG=5l;
+    private final static Long ID_OPTION_RDT_STOCKOUT =6l;
 
     /**
      * Id of Combined act treatment option
      */
-    private final static Long ID_OPTION_TREATMENT_COMBINEDACT=22l;
+    private final static Long ID_OPTION_TREATMENT_REFERER_HOSPITAL=21l;
 
     /**
      * Id of ACT6x1 treatment option
@@ -114,40 +101,82 @@ public class SurveyMonitor extends BaseSurveyMonitor {
      */
     private final static Long ID_OPTION_TREATMENT_ACT6X4=20l;
 
+
     /**
-     * Id of ACT6x4 treatment option
+     * Tells if the given survey is tested
+     * @return
      */
-    private final static Long ID_OPTION_TREATMENT_RDTS=21l;
-
     public boolean isSuspected(){
-        return (isPositive() || isNegative());
+        return (isTested() || isNotTested());
     }
 
-    public boolean isSubmission() {
-        return findValue(ID_QUESTION_SUBMISION, ID_OPTION_HOSPITAL)!=null;
+    /**
+     * Tells if the given survey is tested
+     * @return
+     */
+    public boolean isRated() {
+        return findValue(ID_QUESTION_RDT,ID_OPTION_RDT_POSITIVE)!=null;
     }
 
-    public boolean isSevere() {
-        return findValue(ID_QUESTION_REASON, ID_OPTION_SEVERE)!=null;
+    /**
+     * Tells if the given survey is not tested
+     * @return
+     */
+    public boolean isNotTested(){
+        return findValue(ID_QUESTION_RDT,ID_OPTION_RDT_NOT_TESTED)!=null;
+    }
+    /**
+     * Tells if the given survey is not tested
+     * @return
+     */
+    public boolean isTested(){
+        return findValue(ID_QUESTION_RDT,ID_OPTION_RDT_TESTED)!=null;
+    }
+    /**
+     * Tells if the given survey is negative
+     * @return
+     */
+    public boolean isNegative(){
+        return findValue(ID_QUESTION_SPECIE,ID_OPTION_TEST_NEGATIVE)!=null;
+    }
+    /**
+     * Tells if the given survey is positive
+     * @return
+     */
+    public boolean isPositive(){
+        return (findValue(ID_QUESTION_SPECIE,ID_OPTION_SPECIE_PF)!=null || findValue(ID_QUESTION_SPECIE,ID_OPTION_SPECIE_PV)!=null || findValue(ID_QUESTION_SPECIE,ID_OPTION_SPECIE_PFPV)!=null );
+    }
+    /**
+     * Tells if the given survey has Pf/Pv (mixed) or Pv  specie
+     * @return
+     */
+    public boolean isReferral(){
+        return (findValue(ID_QUESTION_SPECIE, SurveyMonitor.ID_OPTION_SPECIE_PFPV)!=null || findValue(ID_QUESTION_SPECIE, SurveyMonitor.ID_OPTION_SPECIE_PV)!=null) ;
+    }
+    /**
+     * Tells if the given survey is not tested
+     * @return
+     */
+    public boolean isRDTTesting() {
+        return findValue(ID_QUESTION_RDT, ID_OPTION_RDT_NOT_TESTED)!=null;
+    }
+
+    public boolean isTreatment() {
+        if(isReferral() || findValue(ID_QUESTION_TREATMENT,ID_OPTION_TREATMENT_REFERER_HOSPITAL)!=null) {
+             return true;
+        }
+        else {
+            return false;
+        }
     }
 
 
-    public boolean isPregnant() {
-        return findValue(ID_QUESTION_REASON, ID_OPTION_PREGNANT)!=null;
+    public boolean isACTStockout() {
+        return findValue(ID_QUESTION_TREATMENT,ID_OPTION_TREATMENT_REFERER_HOSPITAL)!=null;
     }
 
-
-    public boolean isDenied() {
-        return findValue(ID_QUESTION_REASON, ID_OPTION_DENIED)!=null;
-    }
-
-    public boolean isDrug() {
-        return findValue(ID_QUESTION_REASON, ID_OPTION_DRUG)!=null;
-    }
-
-
-    public boolean isCombinedACT() {
-        return findOption(ID_QUESTION_TREATMENT,ID_OPTION_TREATMENT_COMBINEDACT);
+    public boolean isRDTStockout() {
+        return findValue(ID_QUESTION_REASON, ID_OPTION_RDT_STOCKOUT)!=null;
     }
     public boolean isACT6x4() {
         return findOption(ID_QUESTION_TREATMENT,ID_OPTION_TREATMENT_ACT6X4);
@@ -166,10 +195,33 @@ public class SurveyMonitor extends BaseSurveyMonitor {
     }
 
     /**
-     * Tells if the given survey is a RDT survey (positive or negative)
+     * Tells if the given survey is a RDT positive/negative
      * @return
      */
     public boolean isRDTs(){
-        return findOption(SurveyMonitor.ID_QUESTION_TREATMENT, SurveyMonitor.ID_OPTION_TREATMENT_RDTS);
+        return findOption(SurveyMonitor.ID_QUESTION_RDT, SurveyMonitor.ID_OPTION_RDT_POSITIVE);
     }
+    /**
+     * Returns the number of rtd tests for each survey
+     * @return
+     */
+    public Integer countRDT(){
+        if(isRDTs()){
+            return testCounter()+1;
+        }
+        else return 0;
+    }
+    /**
+     * Returns the invalid count rdts for each survey
+     * @return
+     */
+    public int testCounter() {
+        Value value = findValue(SurveyMonitor.ID_QUESTION_COUNTER);
+        if(value==null || value.getValue()==null){
+            return 0;
+        }
+        return Integer.parseInt(value.getValue());
+    }
+
+
 }
