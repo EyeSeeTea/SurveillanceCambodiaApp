@@ -74,6 +74,7 @@
 <string name="create_info_zone">"Zone"</string>
 <string name="dhis_url_error">"DHIS URL Error"</string>
 <string name="dhis_url_error_bad_version">"Dhis server not compatible (only 2.20, 2.21, 2.22 allowed)"</string>
+<string name="dhis_url_error_generic">"Dhis server error. The server not responding properly"</string>
 <string name="dhis_url_error_bad_credentials">"This app is not authorized in the given server"</string>
 <string name="settings_menu_monitoring">"Monitor"</string>
 <string name="monitor_label">"Please, select a time period"</string>
@@ -119,4 +120,9 @@
 <string name="font_size_level4_title">"Extra large"</string>
 <string name="option_counter">"Repetitions: "</string>
 <string name="option_confirm">"Confirm option"</string>
+<string name="no_data">no data</string>
+<string name="last_6_days">last 6 days</string>
+<string name="last_6_weeks">last 6 weeks</string>
+<string name="last_6_months">last 6 months</string>
+<string name="download">Download:</string>
 </resources>

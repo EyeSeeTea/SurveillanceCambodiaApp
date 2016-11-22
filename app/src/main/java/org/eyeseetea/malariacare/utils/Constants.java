@@ -64,7 +64,10 @@ public class Constants {
     public static final int SURVEY_IN_PROGRESS = 0,
             SURVEY_COMPLETED = 1,
             SURVEY_SENT = 2,
-            SURVEY_HIDE = 3;
+            SURVEY_HIDE = 3,
+            SURVEY_CONFLICT = 4,
+            SURVEY_QUARANTINE = 5,
+            SURVEY_SENDING = 6;
 
     public static final String FONTS_XSMALL = "xsmall",
             FONTS_SMALL = "small",
