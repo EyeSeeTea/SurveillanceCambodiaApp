@@ -38,6 +38,7 @@ import org.eyeseetea.malariacare.database.model.Survey;
 import org.eyeseetea.malariacare.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.utils.Constants;
 import org.eyeseetea.malariacare.utils.Utils;
+import org.eyeseetea.malariacare.views.ShowException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -109,17 +110,17 @@ public class ServerAPIController {
     /**
      * Endpoint to retrieve orgUnits info filtering by CODE (API)
      */
-    private static final String DHIS_PULL_ORG_UNIT_API ="/api/organisationUnits.json?paging=false&fields=id,closedDate&filter=code:eq:%s&filter:programs:id:eq:%s";
+    private static final String DHIS_PULL_ORG_UNIT_API ="/api/organisationUnits.json?paging=false&fields=id,closedDate,description&filter=code:eq:%s&filter:programs:id:eq:%s";
 
     /**
      * Endpoint to retrieve orgUnits info filtering by NAME (SDK)
      */
-    private static final String DHIS_PULL_ORG_UNIT_API_BY_NAME ="/api/organisationUnits.json?paging=false&fields=id,closedDate&filter=name:eq:%s&filter:programs:id:eq:%s";
+    private static final String DHIS_PULL_ORG_UNIT_API_BY_NAME ="/api/organisationUnits.json?paging=false&fields=id,closedDate,description&filter=name:eq:%s&filter:programs:id:eq:%s";
 
     /**
      * Endpoint suffix to retrieve orgUnits
      */
-    private static final String DHIS_PULL_ORG_UNITS_API=".json?fields=organisationUnits";
+    private static final String DHIS_PULL_ORG_UNITS_API=".json?fields=organisationUnits[*]";
     /**
      * Endpoint to patch closeDate to an OrgUnit
      */
@@ -427,15 +428,22 @@ public class ServerAPIController {
         try {
             JSONObject orgUnitJSON = getOrgUnitData(url, orgUnitNameOrCode);
             String orgUnitUID =orgUnitJSON.getString(TAG_ID);
-            String orgUnitDescription = orgUnitJSON.getString(TAG_DESCRIPTIONCLOSEDATE);
-
+            String orgUnitDescription;
+            //Fixme: refactor try catch{ Exception }
+            try {
+                orgUnitDescription = orgUnitJSON.getString(TAG_DESCRIPTIONCLOSEDATE);
+            }catch (Exception e){
+                orgUnitDescription = "";
+            }
             //NO OrgUnitUID -> Non blocking error, go on
             if(orgUnitUID==null){
                 Log.e(TAG,String.format("banOrg(%s,%s) -> No UID",url,orgUnitNameOrCode));
                 return;
             }
-
-            //Update date and descripcion in the orgunit
+            //Show informative dialog to the user
+            Context context = PreferencesState.getInstance().getContext();
+            ShowException.showError(context.getString(R.string.exception_org_unit_banned), context);
+            //Update date and description in the orgunit
             patchClosedDate(url, orgUnitUID);
             patchDescriptionClosedDate(url, orgUnitUID, orgUnitDescription);
         }catch(Exception ex){
@@ -461,8 +469,7 @@ public class ServerAPIController {
             }
 
             //{"organisationUnits":[{}]}
-            JSONObject jsonResponse=parseResponse(response.body().string());
-            JSONArray orgUnitsArray = (JSONArray) jsonResponse.get(TAG_ORGANISATIONUNITS);
+            JSONArray orgUnitsArray =parseResponse(response.body().string()).getJSONArray(TAG_ORGANISATIONUNITS);
 
             //0 matches -> Error
             if (orgUnitsArray.length()==0){
@@ -479,6 +486,40 @@ public class ServerAPIController {
 
     }
 
+    /**
+     * This method returns a String[] whit the Organitation codes
+     * @throws Exception
+     */
+    public static String[] pullOrgUnitsNotBannedCodes(String url){
+
+        try{
+            String orgUnitsURL  = getDhisOrgUnitsURL(url);
+            Response response=executeCall(null, orgUnitsURL, "GET");
+
+            //Error -> null
+            if(!response.isSuccessful()){
+                Log.e(TAG, "pullOrgUnitsCodes (" + response.code() + "): " + response.body().string());
+                throw new IOException(response.message());
+            }
+
+            //{"organisationUnits":[{}]}
+            JSONArray orgUnitsArray = parseResponse(response.body().string()).getJSONArray(TAG_ORGANISATIONUNITS);
+            //fixme loop removing the orgunits banned (orgUnitsArray)
+            //mehtod isBanned()
+            //0 matches -> Error
+            if (orgUnitsArray.length()==0){
+                throw new Exception("Found 0 matches");
+            }
+            return Utils.jsonArrayToStringArray(orgUnitsArray, TAG_ID);
+
+        }catch(Exception ex){
+            Log.e(TAG,String.format("pullOrgUnitsCodes(%url): %s",url,ex.getMessage()));
+            String[] value = new String[1];
+            value[0] = "";
+            return value;
+        }
+
+    }
     /**
      * compares the dates of the surveys and checks if the dates are over the limit
      * @param surveyList all the sent surveys

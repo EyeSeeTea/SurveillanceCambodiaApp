@@ -33,6 +33,8 @@ import java.util.List;
 @Table(databaseName = AppDatabase.NAME)
 public class User extends BaseModel {
 
+    private static final String DUMMY_USER="user";
+
     @Column
     @PrimaryKey(autoincrement = true)
     long id_user;
@@ -96,13 +98,33 @@ public class User extends BaseModel {
         return null;
     }
 
-    public static User existUser(User user) {
+    public static void insertLoggedUser(User user){
+        User userDB=User.getUserFromDB(user);
+
+        if(userDB==null)
+            user.save();
+    }
+
+    public static User getUserFromDB(User user) {
         List<User> userdb= new Select().from(User.class).queryList();
         for(int i=userdb.size()-1;i>=0;i--){
             if((userdb.get(i).getUid().equals(user.getUid()))&&(userdb.get(i).getName().equals(user.getName())))
                 return userdb.get(i);
         }
         return null;
+    }
+
+    public static User createDummyUser(){
+        User dummyUser=new User(DUMMY_USER,DUMMY_USER);
+
+        User userdb=User.getUserFromDB(dummyUser);
+
+        if(userdb!=null)
+            dummyUser=userdb;
+        else
+            dummyUser.save();
+
+        return dummyUser;
     }
 
     @Override

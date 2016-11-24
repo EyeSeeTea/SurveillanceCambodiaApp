@@ -14,6 +14,9 @@
 <string name="settings_menu_about">"ກ່ຽວກັບ"</string>
 <string name="settings_menu_configuration">"ການຕັ້ງຄ່າ"</string>
 <string name="settings_menu_licence">"ການອະນຸຍາດ"</string>
+<string name="settings_menu_logout_title">"ອອກ​ຈາກ​ລະ​ບົບ"</string>
+<string name="settings_menu_logout_message">"ການປ່ຽນແປງເຄື່ອງແມ່ຂ່າຍຫຼືອົງການຈັດຕັ້ງຫນ່ວຍບໍລິການຕ້ອງການທີ່ຈະ Re: ເຂົ້າສູ່ລະບົບ. ທຸກການສໍາຫຼວດບໍ່ສົ່ງຈະໄດ້ຮັບການລຶບ. ທ່ານແນ່ໃຈວ່າທ່ານຕ້ອງການທີ່ຈະສືບຕໍ່?"</string>
+<string name="dashboard_menu_logout_message">"ທຸກການສໍາຫຼວດບໍ່ສົ່ງຈະໄດ້ຮັບການລຶບ. ທ່ານແນ່ໃຈວ່າທ່ານຕ້ອງການທີ່ຈະສືບຕໍ່?"</string>
 <string name="dialog_title_delete_surveys">"ທ່ານແນ່ໃຈບໍ່ທີ່ຈະລຶບຂໍ້ມູນທັງໝົດທີ່ສົ່ງແລ້ວ?"</string>
 <string name="dialog_title_delete_survey">"ລຶບການສຳຫຼວດ"</string>
 <string name="dialog_info_delete_survey">"ທ່ານແນ່ໃຈວ່າຕ້ອງການລຶບການສຳຫຼວດນີ້?"</string>
@@ -37,6 +40,7 @@
 <string name="settings_checkbox_customize_fonts">"ກໍານົດຕົວອັກສອນ?"</string>
 <string name="settings_list_font_sizes">"ຂະໜາດຕົວອັກສອນ"</string>
 <string name="settings_text_dhis_server_url">"DHIS Server URL"</string>
+<string name="settings_select_language">"ພາສາ"</string>
 <string name="pref_header_general">"ທົ່ວໄປ"</string>
 <string name="font_size_level0">"ນ້ອຍສຸດ"</string>
 <string name="font_size_level1">"ນ້ອຍ"</string>
@@ -141,9 +145,18 @@
 <string name="review_title">"ກະລຸນາກວດສອບກ່ອນທີ່ຈະ"</string>
 <string name="review_subtitle">"ລະບົບສາຍສົ່ງ"</string>
 <string name="not_tested">ບໍ່ໄດ້ທົດສອບ</string>
+<string name="system_defined">"ລະບົບກໍານົດໄວ້"</string>
 <string name="no_data">ບໍ່​ມີ​ຂໍ້​ມູນ</string>
 <string name="last_6_days">6 ວັນ</string>
 <string name="last_6_weeks">ທີ່ຜ່ານມາ 6 ອາທິດ</string>
 <string name="last_6_months">ສຸດທ້າຍ 6 ເດືອນທີ່</string>
 <string name="download">Download:</string>
+<string name="assessment_past_cases">PAST CASES</string>
+<string name="assessment_new_cases">NEW CASES</string>
+<string name="assessment_connectivity">Data awaiting internet connectivity</string>
+<string name="positive_hint">Name, Details</string>
+<string name="developer_option_summary">ຄຸນນະສົມບັດນີ້ເປີດໃຊ້ວຽກທາງເລືອກການພັດທະນາ</string>
+<string name="developer_option_title">ທາງເລືອກໃນການສະແດງໃຫ້ເຫັນການພັດທະນາ</string>
+<string name="export_data_option_title">ຖານຂໍ້ມູນການສົ່ງອອກ</string>
+<string name="demo_login">ການສາທິດ</string>
 </resources>

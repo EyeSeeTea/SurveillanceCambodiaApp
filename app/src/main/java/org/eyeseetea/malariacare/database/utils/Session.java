@@ -29,6 +29,7 @@ import android.widget.ListView;
 import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.database.model.Survey;
 import org.eyeseetea.malariacare.database.model.User;
+import org.eyeseetea.malariacare.domain.entity.Credentials;
 import org.eyeseetea.malariacare.layout.adapters.dashboard.IDashboardAdapter;
 import org.eyeseetea.malariacare.phonemetadata.PhoneMetaData;
 
@@ -58,6 +59,11 @@ public class Session {
     private static User user;
 
     /**
+     * The current credentials
+     */
+    private static Credentials sCredentials;
+
+    /**
      * The current location
      */
     private static Location location;
@@ -73,6 +79,11 @@ public class Session {
     final public static ReentrantReadWriteLock valuesLock = new ReentrantReadWriteLock();
 
     /**
+     * The maximum total of questions in programm
+     */
+    private static int maxTotalQuestions;
+
+    /**
      * Map that holds non serializable results from services
      */
     private static Map<String,Object> serviceValues=new HashMap<>();
@@ -86,6 +97,14 @@ public class Session {
 
     public static synchronized void setSurvey(Survey survey) {
         Session.survey = survey;
+    }
+
+    public static Credentials getCredentials() {
+        return sCredentials;
+    }
+
+    public static void setCredentials(Credentials credentials) {
+        sCredentials = credentials;
     }
 
     public static User getUser() {
@@ -135,11 +154,6 @@ public class Session {
      * Closes the current session when the user logs out
      */
     public static void logout(){
-        List<Survey> surveys = Survey.getAllUnsentSurveys();
-        for (Survey survey : surveys) {
-            survey.delete();
-        }
-        Session.getUser().delete();
         Session.setUser(null);
         Session.setSurvey(null);
         Session.setAdapterUncompleted(null);
@@ -195,4 +209,11 @@ public class Session {
         Session.phoneMetaData = phoneMetaData;
     }
 
+    public static int getMaxTotalQuestions() {
+        return maxTotalQuestions;
+    }
+
+    public static synchronized void setMaxTotalQuestions(int maxTotalQuestions) {
+        Session.maxTotalQuestions = maxTotalQuestions;
+    }
 }

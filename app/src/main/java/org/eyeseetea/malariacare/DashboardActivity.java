@@ -23,30 +23,37 @@ import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
 import android.app.ListFragment;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.text.Spanned;
 import android.util.Log;
 import android.view.View;
 import android.widget.TabHost;
 
 import com.raizlabs.android.dbflow.sql.language.Select;
 
+import org.eyeseetea.malariacare.database.model.Program;
 import org.eyeseetea.malariacare.database.model.Question;
 import org.eyeseetea.malariacare.database.model.Survey;
 import org.eyeseetea.malariacare.database.model.Tab;
 import org.eyeseetea.malariacare.database.model.TabGroup;
-import org.eyeseetea.malariacare.database.model.User;
 import org.eyeseetea.malariacare.database.utils.PopulateDB;
+import org.eyeseetea.malariacare.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.database.utils.Session;
+import org.eyeseetea.malariacare.domain.entity.Credentials;
+import org.eyeseetea.malariacare.domain.usecase.LoginUseCase;
 import org.eyeseetea.malariacare.fragments.DashboardSentFragment;
 import org.eyeseetea.malariacare.fragments.DashboardUnsentFragment;
 import org.eyeseetea.malariacare.fragments.MonitorFragment;
 import org.eyeseetea.malariacare.fragments.ReviewFragment;
 import org.eyeseetea.malariacare.fragments.SurveyFragment;
 import org.eyeseetea.malariacare.layout.score.ScoreRegister;
+import org.eyeseetea.malariacare.layout.utils.LayoutUtils;
 import org.eyeseetea.malariacare.services.SurveyService;
 
 import java.io.IOException;
@@ -54,6 +61,8 @@ import java.io.IOException;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TabWidget;
+
+import static com.google.android.gms.internal.zzng.ex;
 
 public class DashboardActivity extends BaseActivity {
 
@@ -92,10 +101,8 @@ public class DashboardActivity extends BaseActivity {
         Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
 
-        AsyncPopulateDB asyncPopulateDB=new AsyncPopulateDB();
+        AsyncPopulateDB asyncPopulateDB=new AsyncPopulateDB(this);
         asyncPopulateDB.execute((Void) null);
-
-        createActionBar();
         dashboardActivity=this;
         setContentView(R.layout.tab_dashboard);
         Survey.removeInProgress();
@@ -106,12 +113,14 @@ public class DashboardActivity extends BaseActivity {
         }
         initTabHost(savedInstanceState);
         /* set tabs in order */
-        setTab(getResources().getString(R.string.tab_tag_assess), R.id.tab_assess_layout, getResources().getString(R.string.unsent_button));
-        setTab(getResources().getString(R.string.tab_tag_improve), R.id.tab_improve_layout, getResources().getString(R.string.sent_button));
-        setTab(getResources().getString(R.string.tab_tag_monitor), R.id.tab_monitor_layout, getResources().getString(R.string.monitor_button));
+        LayoutUtils.setTabHosts(this);
 
         //set the tabs background as transparent
-        setTabsBackgroundColor(R.color.white);
+        setTabsBackgroundColor(R.color.tab_unpressed_background);
+
+        //set first tab as selected:
+        tabHost.getTabWidget().getChildAt(0).setBackgroundColor(getResources().getColor(R.color.tab_pressed_background));
+
         tabHost.setOnTabChangedListener(new TabHost.OnTabChangeListener() {
 
             @Override
@@ -119,7 +128,7 @@ public class DashboardActivity extends BaseActivity {
                 /** If current tab is android */
 
                 //set the tabs background as transparent
-                setTabsBackgroundColor(R.color.white);
+                setTabsBackgroundColor(R.color.tab_unpressed_background);
                 currentTab = tabId;
 
                 //If change of tab from surveyFragment or FeedbackFragment they could be closed.
@@ -129,20 +138,19 @@ public class DashboardActivity extends BaseActivity {
                     exitReviewOnChangeTab(null);
                if (tabId.equalsIgnoreCase(getResources().getString(R.string.tab_tag_assess))) {
                     currentTabName=getString(R.string.assess);
-                    tabHost.getCurrentTabView().setBackgroundColor(getResources().getColor(R.color.light_grey));
+                    tabHost.getCurrentTabView().setBackgroundColor(getResources().getColor(R.color.tab_pressed_background));
                     unsentFragment.reloadData();
                 } else if (tabId.equalsIgnoreCase(getResources().getString(R.string.tab_tag_improve))) {
                     currentTabName=getString(R.string.improve);
-                    tabHost.getCurrentTabView().setBackgroundColor(getResources().getColor(R.color.light_grey));
+                    tabHost.getCurrentTabView().setBackgroundColor(getResources().getColor(R.color.tab_pressed_background));
                     sentFragment.reloadData();
                 } else if (tabId.equalsIgnoreCase(getResources().getString(R.string.tab_tag_monitor))) {
                     currentTabName=getString(R.string.monitor);
-                    tabHost.getCurrentTabView().setBackgroundColor(getResources().getColor(R.color.light_grey));
+                    tabHost.getCurrentTabView().setBackgroundColor(getResources().getColor(R.color.tab_pressed_background));
                     monitorFragment.reloadData();
                 }
             }
         });
-
         // init tabHost
         for(int i=0;i<tabHost.getTabWidget().getChildCount();i++){
             tabHost.getTabWidget().getChildAt(i).setFocusable(false);
@@ -153,14 +161,26 @@ public class DashboardActivity extends BaseActivity {
         currentTab=currentTabName;
     }
 
+    public void setTabHostsWithText() {
+        Context context = PreferencesState.getInstance().getContext();
+        setTab(context.getResources().getString(R.string.tab_tag_assess), R.id.tab_assess_layout, context.getResources().getString(R.string.assess));
+        setTab(context.getResources().getString(R.string.tab_tag_improve), R.id.tab_improve_layout, context.getResources().getString(R.string.improve));
+        setTab(context.getResources().getString(R.string.tab_tag_monitor), R.id.tab_monitor_layout, context.getResources().getString(R.string.monitor));
+    }
+
+    public void setTabHostsWithImages() {
+        Context context = PreferencesState.getInstance().getContext();
+        setTab(context.getResources().getString(R.string.tab_tag_assess), R.id.tab_assess_layout, context.getResources().getDrawable(R.drawable.assess));
+        setTab(context.getResources().getString(R.string.tab_tag_improve), R.id.tab_improve_layout, context.getResources().getDrawable(R.drawable.improve));
+        setTab(context.getResources().getString(R.string.tab_tag_monitor), R.id.tab_monitor_layout, context.getResources().getDrawable(R.drawable.monitor));
+    }
+
     private void setTabsBackgroundColor(int color) {
         //set the tabs background as transparent
         for(int i=0;i<tabHost.getTabWidget().getChildCount();i++){
             tabHost.getTabWidget().getChildAt(i).setBackgroundColor(getResources().getColor(color));
         }
     }
-
-
     /**
      * Init the conteiner for all the tabs
      */
@@ -178,6 +198,18 @@ public class DashboardActivity extends BaseActivity {
         TabHost.TabSpec tab = tabHost.newTabSpec(tabName);
         tab.setContent(layout);
         tab.setIndicator(text);
+        tabHost.addTab(tab);
+        addTagToLastTab(tabName);
+    }
+    /**
+     * Set tab in tabHost
+     * @param tabName is the name of the tab
+     * @param layout is the id of the layout
+     * */
+    private void setTab(String tabName, int layout, Drawable image) {
+        TabHost.TabSpec tab = tabHost.newTabSpec(tabName);
+        tab.setContent(layout);
+        tab.setIndicator("", image);
         tabHost.addTab(tab);
         addTagToLastTab(tabName);
     }
@@ -567,16 +599,25 @@ public class DashboardActivity extends BaseActivity {
      */
     public class AsyncPopulateDB extends AsyncTask<Void, Void, Exception> {
 
-        private static final String DUMMY_USER="user";
-        User user;
+        //User user;
+        DashboardActivity dashboardActivity;
 
-         AsyncPopulateDB() {
+         AsyncPopulateDB(DashboardActivity dashboardActivity) {
+             this.dashboardActivity = dashboardActivity;
         }
 
         @Override
         protected Exception doInBackground(Void... params) {
             try {
-                initUser();
+                if(!BuildConfig.multiuser) {
+                    Log.i(TAG, "Creating demo login from dashboard ...");
+                    LoginUseCase loginUseCase = new LoginUseCase(dashboardActivity);
+
+                    Credentials demoCrededentials = Credentials.createDemoCredentials();
+
+                    loginUseCase.execute(demoCrededentials);
+                }
+
                 initDataIfRequired();
             }catch(Exception ex) {
                 Log.e(TAG, "Error initializing DB: ", ex);
@@ -600,33 +641,21 @@ public class DashboardActivity extends BaseActivity {
                         }).create().show();
                 return;
             }
-            //Success
-            Session.setUser(user);
+
             getSurveysFromService();
         }
-
-        /**
-         * Add user to table and session
-         */
-        private void initUser(){
-            user=new User(DUMMY_USER,DUMMY_USER);
-            User userdb=User.existUser(user);
-            if(userdb!=null)
-            user=userdb;
-            else
-            user.save();
-        }
-
+        
         private void initDataIfRequired() throws IOException {
-            if (new Select().count().from(Tab.class).count()!=0) {
+            if (!Tab.isEmpty()) {
                 Log.i(TAG, "DB Already loaded, showing surveys...");
                 return;
             }
 
             Log.i(TAG, "DB empty, loading data ...");
-            //PopulateDB.populateDummyData();
             try {
                 PopulateDB.populateDB(getAssets());
+                //Get maximum total of questions
+                Session.setMaxTotalQuestions(Program.getMaxTotalQuestions());
             } catch (IOException e) {
                 throw e;
             }
