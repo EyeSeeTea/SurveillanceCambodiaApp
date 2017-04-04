@@ -20,12 +20,15 @@
 package org.eyeseetea.malariacare.utils;
 
 import android.content.Context;
+import android.content.res.Resources;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eyeseetea.malariacare.R;
-import org.eyeseetea.malariacare.database.model.Header;
-import org.eyeseetea.malariacare.database.model.Question;
-import org.eyeseetea.malariacare.database.model.Tab;
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.model.Header;
+import org.eyeseetea.malariacare.data.database.model.Question;
+import org.eyeseetea.malariacare.data.database.model.Tab;
+import org.eyeseetea.malariacare.data.database.model.Translation;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -36,6 +39,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -89,13 +93,25 @@ public class Utils {
 
 
     public static String getInternationalizedString(String name) {
+        if (name == null) {
+            return "";
+        }
         Context context = PreferencesState.getInstance().getContext();
+
         int identifier = context.getResources().getIdentifier(name, "string",
                 context.getPackageName());
         //if the id is 0 it not exist.
         if (identifier != 0) {
-            name = context.getString(identifier);
+            try {
+                name = context.getString(identifier);
+            } catch (Resources.NotFoundException notFoundException) {
+                if (StringUtils.isNumeric(name)) {
+                    name = Translation.getLocalizedString(Long.valueOf(name),
+                            context.getResources().getConfiguration().locale.toString());
+                }
+            }
         }
+
         return name;
     }
 
@@ -228,6 +244,29 @@ public class Utils {
         return calendar;
     }
 
+    public static String parseDateToString(Date date, String dateFormat) {
+        DateFormat df = new SimpleDateFormat(dateFormat);
+        return df.format(date);
+
+    }
+    public static Calendar parseStringToCalendar(String datestring,String dateFormat) {
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat format = new SimpleDateFormat(dateFormat, Locale.US);
+        try {
+            calendar.setTime(format.parse(datestring));// all done
+        } catch (ParseException e) {
+            calendar = null;
+            e.printStackTrace();
+        }
+        return calendar;
+    }
+
+    public static String getStringFromCalendarWithFormat(Calendar calendar,String dateFormat){
+        SimpleDateFormat format = new SimpleDateFormat(dateFormat, Locale.US);
+        return format.format(calendar.getTime());
+    }
+
+
     public static String getClosingDateString(String format) {
         Calendar sysDate = Calendar.getInstance();
         sysDate.setTime(new Date());
@@ -253,9 +292,28 @@ public class Utils {
         return dateFormatted;
     }
 
+    /**
+     * Method to get the date of today with hour at 0
+     */
+    public static Date getTodayDate() {
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        return today.getTime();
+    }
+
     public static Calendar DateToCalendar(Date date) {
         Calendar cal = Calendar.getInstance();
         cal.setTime(date);
         return cal;
+    }
+
+    /**
+     * Method to get if the endDate is grater or equal than the startDate
+     * @param starDate The start date to compare with.
+     * @param endDate The date tha has to be greater or equals to the start date.
+     * @return True if is greater or equals false if not.
+     */
+    public static boolean dateGreaterOrEqualsThanDate(Date starDate, Date endDate) {
+        return starDate.equals(endDate) || starDate.before(endDate);
     }
 }
